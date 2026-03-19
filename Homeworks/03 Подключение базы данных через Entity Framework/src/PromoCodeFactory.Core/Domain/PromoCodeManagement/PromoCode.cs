@@ -1,4 +1,5 @@
 using PromoCodeFactory.Core.Domain.Administration;
+using System.ComponentModel.DataAnnotations;
 
 namespace PromoCodeFactory.Core.Domain.PromoCodeManagement;
 
