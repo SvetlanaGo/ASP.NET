@@ -17,4 +17,32 @@ public static class PromoCodesMapper
             promoCode.PartnerManager.Id,
             promoCode.Preference.Id);
     }
+
+    public static CustomerPromoCodeResponse ToCustomerPromoCodeResponse(CustomerPromoCode customerPromoCode, PromoCode promoCode) =>
+        new CustomerPromoCodeResponse(
+            promoCode.Id,
+            promoCode.Code,
+            promoCode.ServiceInfo,
+            promoCode.PartnerName,
+            promoCode.BeginDate,
+            promoCode.EndDate,
+            promoCode.PartnerManager.Id,
+            promoCode.Preference.Id,
+            customerPromoCode.CreatedAt,
+            customerPromoCode.AppliedAt);
+
+    public static PromoCode ToPromoCode(PromoCodeCreateRequest request, Employee partnerManager,
+        Preference preference, IEnumerable<CustomerPromoCode> customerPromoCodes) =>
+        new PromoCode
+        {
+            Id = Guid.NewGuid(),
+            Code = request.Code,
+            ServiceInfo = request.ServiceInfo,
+            BeginDate = request.BeginDate,
+            EndDate = request.EndDate,
+            PartnerName = request.PartnerName,
+            PartnerManager = partnerManager,
+            Preference = preference,    
+            CustomerPromoCodes = customerPromoCodes.ToList()
+        };
 }
