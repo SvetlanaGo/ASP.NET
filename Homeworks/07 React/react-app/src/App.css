@@ -1,0 +1,17 @@
+.app {
+  max-width: 800px;
+  margin: 0 auto;
+  padding: 40px 20px;
+  font-family: Arial, sans-serif;
+}
+
+.app__title {
+  color: #333;
+  margin-bottom: 40px;
+}
+
+.app__description {
+  color: #666;
+  margin-top: 0;
+  margin-bottom: 30px;
+}
