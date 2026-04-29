@@ -23,7 +23,6 @@ export default function ApiFetcher() {
   const fetchData = async () => {
     setLoading(true);
     setError(null);
-    setData(null);
 
     try {
       const { data: response } = await axios.get<ApiResponse>(API_URL);
@@ -38,7 +37,10 @@ export default function ApiFetcher() {
         : err instanceof Error 
           ? err.message 
           : 'Unknown error occurred';
+      
+      setData(null);
       setError(message);
+      
     } finally {
       setLoading(false);
     }
@@ -57,7 +59,7 @@ export default function ApiFetcher() {
       </button>
 
       {error && <ErrorBox message={error} />}
-      {data && <SuccessBox data={data} />}
+      {data && <SuccessBox data={data} loading={loading} />}
     </div>
   );
 }
