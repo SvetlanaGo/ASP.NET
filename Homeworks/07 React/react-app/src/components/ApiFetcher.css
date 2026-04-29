@@ -1,0 +1,31 @@
+.api-fetcher {
+  padding: 20px;
+}
+
+.fetch-button {
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  background-color: #2563EB;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  transition: background-color 0.2s ease;
+  box-shadow: 0 2px 8px rgba(37, 99, 235, 0.3);
+}
+
+.fetch-button:hover:not(:disabled) {
+  background-color: #1d4ed8;
+}
+
+.fetch-button:disabled {
+  cursor: not-allowed;
+  background-color: #d1d5db;
+  box-shadow: none;
+}
+
+.fetch-button.loading {
+  background-color: #d1d5db;
+  box-shadow: none;
+}
