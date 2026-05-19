@@ -1,0 +1,13 @@
+services:
+  weather-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: weather-app-image
+    container_name: weather-app
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Production
+      - ASPNETCORE_URLS=http://+:8080
+    restart: unless-stopped
