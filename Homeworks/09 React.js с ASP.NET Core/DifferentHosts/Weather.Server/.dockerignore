@@ -1,0 +1,15 @@
+bin/
+obj/
+publish/
+*.user
+*.lock.json
+*.suo
+**/NuGet.Config
+**/nuget.config
+global.json
+appsettings*.local.json
+.vs/
+.vscode/
+.git/
+.gitignore
+*.log
