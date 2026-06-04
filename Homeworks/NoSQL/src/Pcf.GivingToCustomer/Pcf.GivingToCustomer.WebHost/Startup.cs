@@ -1,22 +1,14 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Castle.Core.Configuration;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
-using Microsoft.Extensions.Configuration;
 using Pcf.GivingToCustomer.Core.Abstractions.Gateways;
 using Pcf.GivingToCustomer.Core.Abstractions.Repositories;
 using Pcf.GivingToCustomer.DataAccess;
 using Pcf.GivingToCustomer.DataAccess.Data;
 using Pcf.GivingToCustomer.DataAccess.Repositories;
 using Pcf.GivingToCustomer.Integration;
-using IConfiguration = Microsoft.Extensions.Configuration.IConfiguration;
 
 namespace Pcf.GivingToCustomer.WebHost
 {
@@ -28,23 +20,28 @@ namespace Pcf.GivingToCustomer.WebHost
         {
             Configuration = configuration;
         }
-        
-        // This method gets called by the runtime. Use this method to add services to the container.
-        // For more information on how to configure your application, visit https://go.microsoft.com/fwlink/?LinkID=398940
+
         public void ConfigureServices(IServiceCollection services)
         {
-            services.AddControllers().AddMvcOptions(x=> 
+            services.AddControllers().AddMvcOptions(x =>
                 x.SuppressAsyncSuffixInActionNames = false);
-            services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
-            services.AddScoped<INotificationGateway, NotificationGateway>();
-            services.AddScoped<IDbInitializer, EfDbInitializer>();
-            services.AddDbContext<DataContext>(x =>
+
+            var mongoConnectionString = Configuration.GetConnectionString("PromocodeFactoryGivingToCustomerDb");
+            var databaseName = "promocode_factory_giving_to_customer_db";
+
+            var mongoUrl = new MongoDB.Driver.MongoUrl(mongoConnectionString);
+            if (!string.IsNullOrEmpty(mongoUrl.DatabaseName))
             {
-                //x.UseSqlite("Filename=PromocodeFactoryGivingToCustomerDb.sqlite");
-                x.UseNpgsql(Configuration.GetConnectionString("PromocodeFactoryGivingToCustomerDb"));
-                x.UseSnakeCaseNamingConvention();
-                x.UseLazyLoadingProxies();
-            });
+                databaseName = mongoUrl.DatabaseName;
+            }
+
+            services.AddSingleton(new MongoDbContext(mongoConnectionString, databaseName));
+
+            services.AddScoped(typeof(IRepository<>), typeof(MongoRepository<>));
+
+            services.AddScoped<INotificationGateway, NotificationGateway>();
+
+            services.AddScoped<IDbInitializer, MongoDbInitializer>();
 
             services.AddOpenApiDocument(options =>
             {
@@ -53,16 +50,11 @@ namespace Pcf.GivingToCustomer.WebHost
             });
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
-        public void Configure(IApplicationBuilder app, IWebHostEnvironment env, IDbInitializer dbInitializer)
+        public void Configure(IApplicationBuilder app, IWebHostEnvironment env)
         {
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
-            }
-            else
-            {
-                app.UseHsts();
             }
 
             app.UseOpenApi();
@@ -70,8 +62,6 @@ namespace Pcf.GivingToCustomer.WebHost
             {
                 x.DocExpansion = "list";
             });
-            
-            app.UseHttpsRedirection();
 
             app.UseRouting();
 
@@ -79,8 +69,10 @@ namespace Pcf.GivingToCustomer.WebHost
             {
                 endpoints.MapControllers();
             });
-            
-            dbInitializer.InitializeDb();
+
+            using var scope = app.ApplicationServices.CreateScope();
+            var initializer = scope.ServiceProvider.GetRequiredService<IDbInitializer>();
+            initializer.InitializeDb();
         }
     }
 }

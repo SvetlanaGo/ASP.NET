@@ -1,57 +1,64 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.Linq;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using MongoDB.Driver;
 using Pcf.GivingToCustomer.Core.Abstractions.Gateways;
+using Pcf.GivingToCustomer.Core.Abstractions.Repositories;
+using Pcf.GivingToCustomer.Core.Domain;
 using Pcf.GivingToCustomer.DataAccess;
+using Pcf.GivingToCustomer.DataAccess.Data;
+using Pcf.GivingToCustomer.DataAccess.Repositories;
 using Pcf.GivingToCustomer.Integration;
 using Pcf.GivingToCustomer.IntegrationTests.Data;
 
 namespace Pcf.GivingToCustomer.IntegrationTests
 {
     public class TestWebApplicationFactory<TStartup>
-        : WebApplicationFactory<TStartup> where TStartup: class
+        : WebApplicationFactory<TStartup> where TStartup : class
     {
         protected override void ConfigureWebHost(IWebHostBuilder builder)
         {
+            builder.ConfigureAppConfiguration((context, config) =>
+            {
+                config.Sources.Clear();
+                config.AddInMemoryCollection(new Dictionary<string, string>
+                {
+                    { "ConnectionStrings:PromocodeFactoryGivingToCustomerDb",
+                      "mongodb://localhost:27018/promocode_factory_api_test_db" },
+                    { "Logging:LogLevel:Default", "Information" }
+                });
+            });
+
             builder.ConfigureServices(services =>
             {
                 var descriptor = services.SingleOrDefault(
-                    d => d.ServiceType ==
-                         typeof(DbContextOptions<DataContext>));
+                    d => d.ServiceType == typeof(MongoDbContext));
+                if (descriptor != null)
+                {
+                    services.Remove(descriptor);
+                }
 
-                services.Remove(descriptor);
+                var mongoConnectionString = "mongodb://localhost:27018/promocode_factory_api_test_db";
+                var mongoContext = new MongoDbContext(mongoConnectionString, "promocode_factory_api_test_db");
+                services.AddSingleton(mongoContext);
+
+                services.AddScoped(typeof(IRepository<>), typeof(MongoRepository<>));
 
                 services.AddScoped<INotificationGateway, NotificationGateway>();
-                
-                services.AddDbContext<DataContext>(x =>
-                {
-                    x.UseSqlite("Filename=PromoCodeFactoryDb.sqlite");
-                    //x.UseNpgsql(Configuration.GetConnectionString("PromoCodeFactoryDb"));
-                    x.UseSnakeCaseNamingConvention();
-                    x.UseLazyLoadingProxies();
-                });
 
-                var sp = services.BuildServiceProvider();
+                var initializerDescriptor = services.SingleOrDefault(
+                    d => d.ServiceType == typeof(IDbInitializer));
+                if (initializerDescriptor != null)
+                {
+                    services.Remove(initializerDescriptor);
+                }
 
-                using var scope = sp.CreateScope();
-                var scopedServices = scope.ServiceProvider;
-                var dbContext = scopedServices.GetRequiredService<DataContext>();
-                var logger = scopedServices
-                    .GetRequiredService<ILogger<TestWebApplicationFactory<TStartup>>>();
-                
-                try
-                {
-                    new EfTestDbInitializer(dbContext).InitializeDb();
-                }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Проблема во время заполнения тестовой базы. " +
-                                        "Ошибка: {Message}", ex.Message);
-                }
+                services.AddScoped<IDbInitializer, MongoTestDbInitializer>();
             });
         }
     }
