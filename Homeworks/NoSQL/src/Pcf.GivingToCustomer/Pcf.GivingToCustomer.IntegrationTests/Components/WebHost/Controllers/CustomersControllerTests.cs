@@ -11,17 +11,17 @@ using Xunit;
 
 namespace Pcf.GivingToCustomer.IntegrationTests.Components.WebHost.Controllers
 {
-    [Collection(EfDatabaseCollection.DbCollection)]
-    public class CustomersControllerTests: IClassFixture<EfDatabaseFixture>
+    [Collection(MongoDatabaseCollection.DbCollection)]
+    public class CustomersControllerTests: IClassFixture<MongoDatabaseFixture>
     {
         private readonly CustomersController _customersController;
-        private readonly EfRepository<Customer> _customerRepository;
-        private readonly EfRepository<Preference> _preferenceRepository;
+        private readonly MongoRepository<Customer> _customerRepository;
+        private readonly MongoRepository<Preference> _preferenceRepository;
         
-        public CustomersControllerTests(EfDatabaseFixture efDatabaseFixture)
+        public CustomersControllerTests(MongoDatabaseFixture mongoDatabaseFixture)
         {
-            _customerRepository = new EfRepository<Customer>(efDatabaseFixture.DbContext);
-            _preferenceRepository = new EfRepository<Preference>(efDatabaseFixture.DbContext);
+            _customerRepository = new MongoRepository<Customer>(mongoDatabaseFixture.DbContext);
+            _preferenceRepository = new MongoRepository<Preference>(mongoDatabaseFixture.DbContext);
             
             _customersController = new CustomersController(
                 _customerRepository, 

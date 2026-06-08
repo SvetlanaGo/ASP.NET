@@ -29,7 +29,7 @@ namespace Pcf.GivingToCustomer.WebHost.Models
             {
                 Id = x.PreferenceId,
                 Name = x.Preference.Name
-            }).ToList();
+            }).ToList() ?? new List<PreferenceResponse>();
             PromoCodes = customer.PromoCodes.Select(x => new PromoCodeShortResponse()
                 {
                     Id = x.PromoCode.Id,
@@ -38,7 +38,7 @@ namespace Pcf.GivingToCustomer.WebHost.Models
                     EndDate = x.PromoCode.EndDate.ToString("yyyy-MM-dd"),
                     PartnerId = x.PromoCode.PartnerId,
                     ServiceInfo = x.PromoCode.ServiceInfo
-                }).ToList();
+                }).ToList() ?? new List<PromoCodeShortResponse>();
         }
     }
 }
