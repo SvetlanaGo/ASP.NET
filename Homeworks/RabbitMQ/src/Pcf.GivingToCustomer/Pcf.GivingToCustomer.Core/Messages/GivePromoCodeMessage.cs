@@ -1,23 +1,15 @@
 ﻿using System;
 
-namespace Pcf.ReceivingFromPartner.Integration.Dto
+namespace Pcf.GivingToCustomer.Core.Messages
 {
-    public class GivePromoCodeToCustomerDto
+    public class GivePromoCodeMessage
     {
         public string ServiceInfo { get; set; }
-
         public Guid PartnerId { get; set; }
-
         public Guid PromoCodeId { get; set; }
-
         public string PromoCode { get; set; }
-
         public Guid PreferenceId { get; set; }
-
         public string BeginDate { get; set; }
-
         public string EndDate { get; set; }
-
-        public Guid? PartnerManagerId { get; set; }
     }
 }

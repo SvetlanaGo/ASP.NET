@@ -1,4 +1,21 @@
 services:
+  # RabbitMQ Broker
+  promocode-factory-rabbitmq:
+    image: rabbitmq:3-management
+    container_name: 'promocode-factory-rabbitmq'
+    restart: always
+    ports:
+      - 5672:5672
+      - 15672:15672
+    environment:
+      - RABBITMQ_DEFAULT_USER=guest
+      - RABBITMQ_DEFAULT_PASS=guest
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+
   #Administration Db
   promocode-factory-administration-db:
     image: "postgres:latest"
@@ -8,19 +25,30 @@ services:
       - 5433:5432
     environment: 
       - POSTGRES_PASSWORD=docker
+      - POSTGRES_DB=promocode_factory_administration_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   #Administration Api
   promocode-factory-administration-api:
-    build: src/Pcf.Administration/
+    build:
+      context: .
+      dockerfile: src/Pcf.Administration/Dockerfile
     container_name: 'promocode-factory-administration-api'
     restart: always
     ports:
       - "8091:8080"
     environment:
-      - "ConnectionStrings:PromocodeFactoryAdministrationDb=Host=promocode-factory-administration-db;Database=promocode_factory_administration_db;Username=postgres;Password=docker"          
+      - "ConnectionStrings:PromocodeFactoryAdministrationDb=Host=promocode-factory-administration-db;Database=promocode_factory_administration_db;Username=postgres;Password=docker"
+      - "ConnectionStrings:RabbitMq=amqp://guest:guest@promocode-factory-rabbitmq:5672"          
     depends_on: 
-      - promocode-factory-administration-db
-
+      promocode-factory-administration-db:
+        condition: service_healthy
+      promocode-factory-rabbitmq:
+        condition: service_healthy
 
   #ReceivingFromPartner Db
   promocode-factory-receiving-from-partner-db:
@@ -31,21 +59,31 @@ services:
       - 5434:5432
     environment: 
       - POSTGRES_PASSWORD=docker
+      - POSTGRES_DB=promocode_factory_receiving_from_partner_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   #ReceivingFromPartner Api
   promocode-factory-receiving-from-partner-api:
-    build: src/Pcf.ReceivingFromPartner/
+    build:
+      context: .
+      dockerfile: src/Pcf.ReceivingFromPartner/Dockerfile
     container_name: 'promocode-factory-receiving-from-partner-api'
     restart: always
     ports:
       - "8092:8080"
     environment:
       - "ConnectionStrings:PromocodeFactoryReceivingFromPartnerDb=Host=promocode-factory-receiving-from-partner-db;Database=promocode_factory_receiving_from_partner_db;Username=postgres;Password=docker"
-      - "IntegrationSettings:GivingToCustomerApiUrl=http://promocode-factory-giving-to-customer-api"    
-      - "IntegrationSettings:AdministrationApiUrl=http://promocode-factory-administration-api"       
+      - "ConnectionStrings:RabbitMq=amqp://guest:guest@promocode-factory-rabbitmq:5672"
     depends_on: 
-      - promocode-factory-receiving-from-partner-db
-  
+      promocode-factory-receiving-from-partner-db:
+        condition: service_healthy
+      promocode-factory-rabbitmq:
+        condition: service_healthy
+
   #GivingToCustomer Db
   promocode-factory-giving-to-customer-db:
     image: "postgres:latest"
@@ -55,15 +93,27 @@ services:
       - 5435:5432
     environment: 
       - POSTGRES_PASSWORD=docker
+      - POSTGRES_DB=promocode_factory_giving_to_customer_db
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   #GivingToCustomer Api
   promocode-factory-giving-to-customer-api:
-    build: src/Pcf.GivingToCustomer/
+    build:
+      context: .
+      dockerfile: src/Pcf.GivingToCustomer/Dockerfile
     container_name: 'promocode-factory-giving-to-customer-api'
     restart: always
     ports:
       - "8093:8080"
     environment:
-      - "ConnectionStrings:PromocodeFactoryGivingToCustomerDb=Host=promocode-factory-giving-to-customer-db;Database=promocode_factory_giving_to_customer_db;Username=postgres;Password=docker"          
+      - "ConnectionStrings:PromocodeFactoryGivingToCustomerDb=Host=promocode-factory-giving-to-customer-db;Database=promocode_factory_giving_to_customer_db;Username=postgres;Password=docker"
+      - "ConnectionStrings:RabbitMq=amqp://guest:guest@promocode-factory-rabbitmq:5672"          
     depends_on: 
-      - promocode-factory-giving-to-customer-db
+      promocode-factory-giving-to-customer-db:
+        condition: service_healthy
+      promocode-factory-rabbitmq:
+        condition: service_healthy
