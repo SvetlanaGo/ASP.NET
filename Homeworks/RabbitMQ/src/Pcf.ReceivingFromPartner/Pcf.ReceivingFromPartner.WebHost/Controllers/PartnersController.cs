@@ -2,12 +2,14 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using MassTransit;
 using Microsoft.AspNetCore.Mvc;
+using Pcf.Contracts.Events;
+using Pcf.ReceivingFromPartner.Core.Abstractions.Gateways;
 using Pcf.ReceivingFromPartner.Core.Abstractions.Repositories;
 using Pcf.ReceivingFromPartner.Core.Domain;
-using Pcf.ReceivingFromPartner.Core.Abstractions.Gateways;
-using Pcf.ReceivingFromPartner.WebHost.Models;
 using Pcf.ReceivingFromPartner.WebHost.Mappers;
+using Pcf.ReceivingFromPartner.WebHost.Models;
 
 namespace Pcf.ReceivingFromPartner.WebHost.Controllers
 {
@@ -16,26 +18,22 @@ namespace Pcf.ReceivingFromPartner.WebHost.Controllers
     /// </summary>
     [ApiController]
     [Route("api/v1/[controller]")]
-    public class PartnersController
-        : ControllerBase
+    public class PartnersController : ControllerBase
     {
         private readonly IRepository<Partner> _partnersRepository;
         private readonly IRepository<Preference> _preferencesRepository;
         private readonly INotificationGateway _notificationGateway;
-        private readonly IGivingPromoCodeToCustomerGateway _givingPromoCodeToCustomerGateway;
-        private readonly IAdministrationGateway _administrationGateway;
+        private readonly IPublishEndpoint _publishEndpoint;
 
         public PartnersController(IRepository<Partner> partnersRepository,
             IRepository<Preference> preferencesRepository,
             INotificationGateway notificationGateway,
-            IGivingPromoCodeToCustomerGateway givingPromoCodeToCustomerGateway,
-            IAdministrationGateway administrationGateway)
+            IPublishEndpoint publishEndpoint)
         {
             _partnersRepository = partnersRepository;
             _preferencesRepository = preferencesRepository;
             _notificationGateway = notificationGateway;
-            _givingPromoCodeToCustomerGateway = givingPromoCodeToCustomerGateway;
-            _administrationGateway = administrationGateway;
+            _publishEndpoint = publishEndpoint;
         }
 
         /// <summary>
@@ -123,8 +121,8 @@ namespace Pcf.ReceivingFromPartner.WebHost.Controllers
 
             if (activeLimit != null)
             {
-                //Если партнеру выставляется лимит, то мы 
-                //должны обнулить количество промокодов, которые партнер выдал, если лимит закончился, 
+                //Если партнеру выставляется лимит, то мы
+                //должны обнулить количество промокодов, которые партнер выдал, если лимит закончился,
                 //то количество не обнуляется
                 partner.NumberIssuedPromoCodes = 0;
 
@@ -282,7 +280,7 @@ namespace Pcf.ReceivingFromPartner.WebHost.Controllers
         }
 
         /// <summary>
-        /// Создать промокод от партнера 
+        /// Создать промокод от партнера
         /// </summary>
         /// <param name="id">Id партнера, например: <example>20d2d612-db93-4ed5-86b1-ff2413bca655</example></param>
         /// <param name="request">Данные запроса/example></param>
@@ -325,22 +323,23 @@ namespace Pcf.ReceivingFromPartner.WebHost.Controllers
             }
 
             PromoCode promoCode = PromoCodeMapper.MapFromModel(request, preference, partner);
+
             partner.PromoCodes.Add(promoCode);
             partner.NumberIssuedPromoCodes++;
 
             await _partnersRepository.UpdateAsync(partner);
 
-            //TODO: Чтобы информация о том, что промокод был выдан парнером была отправлена
-            //в микросервис рассылки клиентам нужно либо вызвать его API, либо отправить событие в очередь
-            await _givingPromoCodeToCustomerGateway.GivePromoCodeToCustomer(promoCode);
-
-            //TODO: Чтобы информация о том, что промокод был выдан парнером была отправлена
-            //в микросервис администрирования нужно либо вызвать его API, либо отправить событие в очередь
-
-            if (request.PartnerManagerId.HasValue)
+            await _publishEndpoint.Publish<IPromoCodeIssuedEvent>(new PromoCodeIssuedEvent
             {
-                await _administrationGateway.NotifyAdminAboutPartnerManagerPromoCode(request.PartnerManagerId.Value);
-            }
+                PromoCodeId = promoCode.Id,
+                ServiceInfo = promoCode.ServiceInfo,
+                PartnerId = promoCode.PartnerId,
+                PromoCode = promoCode.Code,
+                PreferenceId = promoCode.PreferenceId,
+                BeginDate = promoCode.BeginDate,
+                EndDate = promoCode.EndDate,
+                PartnerManagerId = request.PartnerManagerId
+            });
 
             return CreatedAtAction(nameof(GetPartnerPromoCodeAsync),
                 new { id = partner.Id, promoCodeId = promoCode.Id }, null);

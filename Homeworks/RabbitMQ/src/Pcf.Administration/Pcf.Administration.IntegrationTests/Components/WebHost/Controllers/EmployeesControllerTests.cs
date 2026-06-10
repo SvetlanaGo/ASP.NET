@@ -1,7 +1,10 @@
 ﻿using System;
 using System.Threading.Tasks;
 using FluentAssertions;
+using Moq;
 using Pcf.Administration.Core.Domain.Administration;
+using Pcf.Administration.Core.Messages;
+using Pcf.Administration.Core.Services;
 using Pcf.Administration.DataAccess.Repositories;
 using Pcf.Administration.WebHost.Controllers;
 using Xunit;
@@ -12,12 +15,19 @@ namespace Pcf.Administration.IntegrationTests.Components.WebHost.Controllers
     public class EmployeesControllerTests : IClassFixture<EfDatabaseFixture>
     {
         private EfRepository<Employee> _employeesRepository;
+        private Mock<IEmployeeService> _employeeServiceMock;
         private EmployeesController _employeesController;
 
         public EmployeesControllerTests(EfDatabaseFixture efDatabaseFixture)
         {
             _employeesRepository = new EfRepository<Employee>(efDatabaseFixture.DbContext);
-            _employeesController = new EmployeesController(_employeesRepository);
+            _employeeServiceMock = new Mock<IEmployeeService>();
+                        
+            _employeeServiceMock
+                .Setup(x => x.UpdateAppliedPromocodesAsync(It.IsAny<UpdateEmployeePromocodesMessage>()))
+                .Returns(Task.CompletedTask);
+
+            _employeesController = new EmployeesController(_employeesRepository, _employeeServiceMock.Object);
         }
 
         [Fact]
