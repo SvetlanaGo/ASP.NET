@@ -13,6 +13,8 @@ using Pcf.GivingToCustomer.DataAccess.Data;
 using Pcf.GivingToCustomer.DataAccess.Repositories;
 using Pcf.GivingToCustomer.Integration;
 using Pcf.GivingToCustomer.WebHost.Consumers;
+using Pcf.GivingToCustomer.WebHost.GraphQL;
+using Pcf.GivingToCustomer.WebHost.GrpcServices;
 using System;
 using IConfiguration = Microsoft.Extensions.Configuration.IConfiguration;
 
@@ -33,6 +35,10 @@ namespace Pcf.GivingToCustomer.WebHost
         {
             services.AddControllers().AddMvcOptions(x =>
                 x.SuppressAsyncSuffixInActionNames = false);
+            services.AddGrpc();
+            services.AddGrpcReflection();
+            services.AddGraphQLServer().AddQueryType<CustomersQuery>();
+            services.AddScoped<CustomersGrpcService>();
             services.AddScoped(typeof(IRepository<>), typeof(EfRepository<>));
             services.AddScoped<INotificationGateway, NotificationGateway>();
             services.AddScoped<IDbInitializer, EfDbInitializer>();
@@ -104,7 +110,16 @@ namespace Pcf.GivingToCustomer.WebHost
             app.UseEndpoints(endpoints =>
             {
                 endpoints.MapControllers();
+                endpoints.MapGrpcService<CustomersGrpcService>();
+                endpoints.MapGraphQL();
+
+                if (env.IsDevelopment())
+                {
+                    endpoints.MapGrpcReflectionService();
+                }
             });
+
+            
 
             dbInitializer.InitializeDb();
         }

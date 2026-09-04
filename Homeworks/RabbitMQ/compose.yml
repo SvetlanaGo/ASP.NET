@@ -108,8 +108,10 @@ services:
     container_name: 'promocode-factory-giving-to-customer-api'
     restart: always
     ports:
-      - "8093:8080"
+      - "8093:8093"
+      - "5001:5001"
     environment:
+      - ASPNETCORE_ENVIRONMENT=Development
       - "ConnectionStrings:PromocodeFactoryGivingToCustomerDb=Host=promocode-factory-giving-to-customer-db;Database=promocode_factory_giving_to_customer_db;Username=postgres;Password=docker"
       - "ConnectionStrings:RabbitMq=amqp://guest:guest@promocode-factory-rabbitmq:5672"          
     depends_on: 
